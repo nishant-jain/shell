@@ -4,52 +4,94 @@
 #include <errno.h>
 #include<unistd.h>
 #define TRUE 1
+#define STD_INPUT 0
+#define STD_OUTPUT 1
 
-int read_command (char *command, char *parameters[])
+int
+read_command (char *command, char *parameters[])
 {
   char *buffer = malloc (sizeof (char) * 1024);
   int i = 0;
-
-//    printf("hello\n");
   fgets (buffer, 1024, stdin);
-  //  printf("%ld\n",strlen(buffer));
   buffer[strlen (buffer) - 1] = '\0';
-//    printf("%s\n",buffer);
+
   char *pch = malloc (sizeof (char) * 1024);
   //space delimited string 'buffer'
   char *abc = strdup (buffer);
-//    printf("%s\n",abc);
+
   pch = strtok (abc, " ");
   strcpy (command, pch);
-  //strcpy(parameters[1],"abc");
 
   while (pch != NULL)
     {
       strcpy (parameters[i], pch);
       pch = strtok (NULL, " ");
-
-      //segfault here
       i++;
     }
-  //*parameters[i]=NULL;
-  /*for(i=0;i<1024;i++){
-     if(buffer[i]==' '){
-     strcpy(command,buffer,i);
-     break();
-     }
-     }
-     int j=i;
-     int k=0;
-     for(;i<1024;i++){
-     if(buffer[i]==' '){
-     strcpy(parameters[k],buffer[i],
-     }
-     } */
   return i;
 }
 
+void pipeline (char *process1, char *parameters1[], char *process2,
+	  char *parameters2[])
+{
+  int fd[2];
+  pipe (&fd[0]);
+  if (fork () != 0)
+    {
+			/* The parent process executes these statements. */
+      close (fd[0]);
+			/* process 1 does not need to read from pipe */
+      close (STD_OUTPUT);
+			/* prepare for new standard output */
+      dup (fd[1]);
+			/* set standard output to fd[1] */
+      close (fd[1]);
+			/* this file descriptor not needed any more */
+      execv (process1, parameters1);
+    }
+  else
+    {
+			/* The child process executes these statements. */
+      close (fd[1]);
+			/* process 2 does not need to write to pipe */
+      close (STD_INPUT);
+			/* prepare for new standard input */
+      dup (fd[0]);
+			/* set standard input to fd[0] */
+      close (fd[0]);
+			/* this file descriptor not needed any more */
+      execv (process2, parameters2);
+    }
+}
 
-int main (int argc, char **argv)
+void no_pipe(char *command,char *parameters[],int status,int argcount){
+      if (fork () != 0)
+	{
+	  /*parent code */
+//        printf("parent\n");
+	  waitpid (-1, &status, 0);
+	
+	}
+      else
+	{
+	  /*child code */
+	  int i;
+	  char *temp = malloc (sizeof (char) * 100);
+	  parameters[argcount] = NULL;
+	  char *root_path = "/bin/";
+	  //printf("%s\n", command);
+	  char *path = malloc (sizeof (char) * 105);
+	  strcat (path, root_path);
+	  strcat (path, command);
+	  execv (path, parameters);
+//        i=execl("/bin/ls","ls","-l",NULL);
+
+	}
+}
+
+
+int
+main (int argc, char **argv)
 {
   int status;
   int argcount;
@@ -67,43 +109,12 @@ int main (int argc, char **argv)
       parameters[6] = malloc (sizeof (char *) * 1);
       parameters[7] = malloc (sizeof (char *) * 1);
       argcount = read_command (command, parameters);
-      if(strcmp(command,"quit")==0){
-	  	printf("Bye\n");
-	  	break;
-	  }
-      //printf("out of read\n");
-      //strcpy(parameters[0],"hello");
-      if (fork () != 0)
+      if (strcmp (command, "quit") == 0)
 	{
-	  /*parent code */
-//        printf("parent\n");
-	  waitpid (-1, &status, 0);
-
+	  printf ("Bye\n");
+	  break;
 	}
-      else
-	{
-	  /*child code */
-	  int i;
-	  //printf("%s \n",command);
-//        printf("argcount%d\n",argcount);
-	  char *temp = malloc (sizeof (char) * 100);
-//        strcpy(temp,parameters[argcount-1]);
-	  //    strncpy(parameters[argcount-1],temp,strlen(temp));
-//        parameters[argcount-1]="-l";
-	  /*    for(i=0;i<argcount;i++){
-	     printf("%dpara%sqara\n",i,parameters[i]);
-	     }
-	   */
-	  parameters[argcount] = NULL;
-	  char *root_path = "/bin/";
-          printf("%s\n", command);
-	  char *path = malloc (sizeof (char) * 105);
-	  strcat (path, root_path);
-	  strcat (path, command);
-	   //printf("hellooooooooooooooooooooooo%s\n",path);
-	  execv (path, parameters);
-	  //printf("%d %s\n",p,strerror(errno));
-	}
+      no_pipe(command,parameters,status,argcount);
     }
   return 0;
 }
