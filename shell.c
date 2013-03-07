@@ -55,7 +55,7 @@ int main (int argc, char **argv)
   int argcount;
   while (TRUE)
     {
-      printf ("shell $");
+      printf ("nsh:$");
       char *command = malloc (sizeof (char) * 100);
       char *parameters[8];
       parameters[0] = malloc (sizeof (char *) * 1);	//max 7 parameters, 8th null
@@ -67,6 +67,10 @@ int main (int argc, char **argv)
       parameters[6] = malloc (sizeof (char *) * 1);
       parameters[7] = malloc (sizeof (char *) * 1);
       argcount = read_command (command, parameters);
+      if(strcmp(command,"quit")==0){
+	  	printf("Bye\n");
+	  	break;
+	  }
       //printf("out of read\n");
       //strcpy(parameters[0],"hello");
       if (fork () != 0)
@@ -92,11 +96,11 @@ int main (int argc, char **argv)
 	   */
 	  parameters[argcount] = NULL;
 	  char *root_path = "/bin/";
-//        printf("%s %s\n",root_path, command);
+          printf("%s\n", command);
 	  char *path = malloc (sizeof (char) * 105);
 	  strcat (path, root_path);
 	  strcat (path, command);
-	  //printf("hellooooooooooooooooooooooo%s\n",path);
+	   //printf("hellooooooooooooooooooooooo%s\n",path);
 	  execv (path, parameters);
 	  //printf("%d %s\n",p,strerror(errno));
 	}
