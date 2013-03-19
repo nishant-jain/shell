@@ -8,16 +8,24 @@
 #define STD_OUTPUT 1
 
 int
-read_command (char *command, char *parameters[])
+read_command (char *command, char *parameters[],int *flag)
 {
   char *buffer = malloc (sizeof (char) * 1024);
   int i = 0;
   fgets (buffer, 1024, stdin);
+  
   buffer[strlen (buffer) - 1] = '\0';
+  if(strpbrk(buffer,"&")!=NULL)
+	*flag=1;
 
+  else
+	*flag=0;
+  char *new_buffer=strtok(buffer,"&");
+  char *pipe;
+  
   char *pch = malloc (sizeof (char) * 1024);
   //space delimited string 'buffer'
-  char *abc = strdup (buffer);
+  char *abc = strdup (new_buffer);
 
   pch = strtok (abc, " ");
   strcpy (command, pch);
@@ -29,11 +37,13 @@ read_command (char *command, char *parameters[])
       i++;
     }
   return i;
+
 }
 
 void pipeline (char *process1, char *parameters1[], char *process2,
 	  char *parameters2[])
-{
+{ 
+	//from minix3 textbook
   int fd[2];
   pipe (&fd[0]);
   if (fork () != 0)
@@ -64,11 +74,12 @@ void pipeline (char *process1, char *parameters1[], char *process2,
     }
 }
 
-void no_pipe(char *command,char *parameters[],int status,int argcount){
+void no_pipe(char *command,char *parameters[],int status,int argcount,int flag){
       if (fork () != 0)
 	{
 	  /*parent code */
 //        printf("parent\n");
+	if(flag==0)
 	  waitpid (-1, &status, 0);
 	
 	}
@@ -95,11 +106,12 @@ main (int argc, char **argv)
 {
   int status;
   int argcount;
+  int flag=0; //for running process in background
   while (TRUE)
     {
       printf ("nsh:$");
       char *command = malloc (sizeof (char) * 100);
-      char *parameters[8];
+      char *parameters[8],*parameters1[8];
       parameters[0] = malloc (sizeof (char *) * 1);	//max 7 parameters, 8th null
       parameters[1] = malloc (sizeof (char *) * 1);
       parameters[2] = malloc (sizeof (char *) * 1);
@@ -108,13 +120,23 @@ main (int argc, char **argv)
       parameters[5] = malloc (sizeof (char *) * 1);
       parameters[6] = malloc (sizeof (char *) * 1);
       parameters[7] = malloc (sizeof (char *) * 1);
-      argcount = read_command (command, parameters);
+       parameters1[0] = malloc (sizeof (char *) * 1);	//max 7 parameters, 8th null
+      parameters1[1] = malloc (sizeof (char *) * 1);
+      parameters1[2] = malloc (sizeof (char *) * 1);
+      parameters1[3] = malloc (sizeof (char *) * 1);
+      parameters1[4] = malloc (sizeof (char *) * 1);
+      parameters1[5] = malloc (sizeof (char *) * 1);
+      parameters1[6] = malloc (sizeof (char *) * 1);
+      parameters1[7] = malloc (sizeof (char *) * 1);
+      argcount = read_command (command, parameters,&flag);
+      
       if (strcmp (command, "quit") == 0)
 	{
 	  printf ("Bye\n");
 	  break;
 	}
-      no_pipe(command,parameters,status,argcount);
+	
+      no_pipe(command,parameters,status,argcount,flag);
     }
   return 0;
 }
