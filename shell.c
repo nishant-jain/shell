@@ -7,8 +7,24 @@
 #define STD_INPUT 0
 #define STD_OUTPUT 1
 
+int parse_command(char *abc, char* command, char *parameters[]){
+int i=0;
+  char * pch = malloc (sizeof (char) * 1024);
+  pch = strtok (abc, " ");
+  strcpy (command, pch);
+
+  while (pch != NULL)
+    {
+      strcpy (parameters[i], pch);
+      pch = strtok (NULL, " ");
+      i++;
+    }
+parameters[i] = NULL;    
+    return i;
+}
+
 int
-read_command (char *command, char *parameters[],int *flag)
+read_command (char *command, char *parameters[],char *command1, char *parameters1[],int *flag)
 {
   char *buffer = malloc (sizeof (char) * 1024);
   int i = 0;
@@ -23,27 +39,37 @@ read_command (char *command, char *parameters[],int *flag)
   char *new_buffer=strtok(buffer,"&");
   char *pipe;
   
-  char *pch = malloc (sizeof (char) * 1024);
+
   //space delimited string 'buffer'
   char *abc = strdup (new_buffer);
-
-  pch = strtok (abc, " ");
-  strcpy (command, pch);
-
-  while (pch != NULL)
-    {
-      strcpy (parameters[i], pch);
-      pch = strtok (NULL, " ");
-      i++;
-    }
-  return i;
-
+  pipe=strpbrk(abc,"|");
+  if(pipe==NULL){
+  return parse_command(abc,command,parameters);
+}
+	else{
+	char *a=malloc(sizeof(char*));
+	char *b=malloc(sizeof(char*));	
+	char *c= strtok (abc, "|");
+  strcpy (a, c);
+  
+     c = strtok (NULL, "|");
+  strcpy (b, c);
+parse_command(a,command,parameters);
+parse_command(b,command1,parameters1);
+return -1;
+}
 }
 
 void pipeline (char *process1, char *parameters1[], char *process2,
 	  char *parameters2[])
 { 
 	//from minix3 textbook
+  
+  int status;
+  if(fork()!=0){
+  	waitpid (-1, &status, 0);
+  }
+  else{
   int fd[2];
   pipe (&fd[0]);
   if (fork () != 0)
@@ -53,11 +79,16 @@ void pipeline (char *process1, char *parameters1[], char *process2,
 			/* process 1 does not need to read from pipe */
       close (STD_OUTPUT);
 			/* prepare for new standard output */
-      dup (fd[1]);
+     dup (fd[1]);
 			/* set standard output to fd[1] */
       close (fd[1]);
 			/* this file descriptor not needed any more */
-      execv (process1, parameters1);
+	char *root_path = "/bin/";
+	  char *path = malloc (sizeof (char) * 105);
+	  strcat (path, root_path);
+	  strcat (path, process1);
+	  execv (path, parameters1);
+
     }
   else
     {
@@ -66,15 +97,23 @@ void pipeline (char *process1, char *parameters1[], char *process2,
 			/* process 2 does not need to write to pipe */
       close (STD_INPUT);
 			/* prepare for new standard input */
-      dup (fd[0]);
+	printf("child %d",dup (fd[0]));
 			/* set standard input to fd[0] */
       close (fd[0]);
 			/* this file descriptor not needed any more */
-      execv (process2, parameters2);
+	char *root_path = "/bin/";
+	  char *path = malloc (sizeof (char) * 105);
+	  strcat (path, root_path);
+	  strcat (path, process2);
+	  execv (path, parameters2);
+
     }
+    close(fd[1]);
+    close(fd[2]);
+  }
 }
 
-void no_pipe(char *command,char *parameters[],int status,int argcount,int flag){
+void no_pipe(char *command,char *parameters[],int status,int flag){
       if (fork () != 0)
 	{
 	  /*parent code */
@@ -87,10 +126,9 @@ void no_pipe(char *command,char *parameters[],int status,int argcount,int flag){
 	{
 	  /*child code */
 	  int i;
-	  char *temp = malloc (sizeof (char) * 100);
-	  parameters[argcount] = NULL;
+	 // char *temp = malloc (sizeof (char) * 100);
+	  //parameters[argcount] = NULL;
 	  char *root_path = "/bin/";
-	  //printf("%s\n", command);
 	  char *path = malloc (sizeof (char) * 105);
 	  strcat (path, root_path);
 	  strcat (path, command);
@@ -111,6 +149,7 @@ main (int argc, char **argv)
     {
       printf ("nsh:$");
       char *command = malloc (sizeof (char) * 100);
+      char *command1 = malloc (sizeof (char) * 100);
       char *parameters[8],*parameters1[8];
       parameters[0] = malloc (sizeof (char *) * 1);	//max 7 parameters, 8th null
       parameters[1] = malloc (sizeof (char *) * 1);
@@ -128,15 +167,19 @@ main (int argc, char **argv)
       parameters1[5] = malloc (sizeof (char *) * 1);
       parameters1[6] = malloc (sizeof (char *) * 1);
       parameters1[7] = malloc (sizeof (char *) * 1);
-      argcount = read_command (command, parameters,&flag);
+      argcount = read_command (command, parameters,command1,parameters1,&flag);
       
       if (strcmp (command, "quit") == 0)
 	{
 	  printf ("Bye\n");
 	  break;
 	}
+	if(argcount==-1){
+	printf("pipe\n %s \n %s \n",command, command1);
 	
-      no_pipe(command,parameters,status,argcount,flag);
+	pipeline(command,parameters,command1,parameters1);
+	}else
+      no_pipe(command,parameters,status,flag);
     }
   return 0;
 }
