@@ -175,7 +175,7 @@ main (int argc, char **argv)
 	  break;
 	}
 	if(argcount==-1){
-	printf("pipe\n %s \n %s \n",command, command1);
+	//printf("pipe\n %s \n %s \n",command, command1);
 	
 	pipeline(command,parameters,command1,parameters1);
 	}else
